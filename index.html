@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Secure Upload Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0a0c10;
+    --surface: #111318;
+    --border: #1e2330;
+    --accent: #00e5ff;
+    --accent2: #7c3aed;
+    --success: #10b981;
+    --error: #ef4444;
+    --warn: #f59e0b;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  body::after {
+    content: '';
+    position: fixed;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(124,58,237,.12) 0%, transparent 70%);
+    top: -200px; right: -200px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .orb2 {
+    position: fixed;
+    width: 500px; height: 500px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,229,255,.08) 0%, transparent 70%);
+    bottom: -150px; left: -150px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* ── SCREENS ── */
+  .screen {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 460px;
+    padding: 16px;
+    animation: fadeUp .4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hidden { display: none !important; }
+
+  /* ── CARD ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 36px;
+    box-shadow: 0 0 0 1px rgba(0,229,255,.04), 0 32px 64px rgba(0,0,0,.6);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--accent), var(--accent2), transparent);
+  }
+
+  /* ── LOGO / HEADER ── */
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 32px;
+  }
+
+  .logo-icon {
+    width: 42px; height: 42px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+  }
+
+  .logo-icon svg { width: 22px; height: 22px; color: #fff; }
+
+  .logo-text {
+    font-family: var(--display);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -.5px;
+    color: var(--text);
+  }
+
+  .logo-sub {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  h2 {
+    font-family: var(--display);
+    font-size: 24px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 28px;
+    letter-spacing: .5px;
+  }
+
+  /* ── FORM FIELDS ── */
+  .field { margin-bottom: 18px; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 7px;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+  }
+
+  input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,255,.1);
+  }
+
+  .pass-wrap { position: relative; }
+
+  .toggle-pass {
+    position: absolute;
+    right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--muted); cursor: pointer;
+    padding: 4px; display: grid; place-items: center;
+    transition: color .2s;
+  }
+  .toggle-pass:hover { color: var(--accent); }
+  .toggle-pass svg { width: 17px; height: 17px; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    width: 100%;
+    padding: 13px;
+    border-radius: 8px;
+    border: none;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: all .2s;
+    margin-top: 8px;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, var(--accent2), var(--accent));
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0,229,255,.2);
+  }
+
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 28px rgba(0,229,255,.3);
+  }
+
+  .btn-primary:active { transform: translateY(0); }
+
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── ALERT ── */
+  .alert {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    margin-bottom: 18px;
+    animation: fadeUp .3s ease;
+  }
+
+  .alert-error  { background: rgba(239,68,68,.1);  border: 1px solid rgba(239,68,68,.3);  color: var(--error);  }
+  .alert-success{ background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: var(--success);}
+  .alert-warn   { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.3); color: var(--warn);   }
+  .alert svg { width: 15px; height: 15px; flex-shrink: 0; }
+
+  /* ── UPLOAD PORTAL ── */
+  .portal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 28px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .user-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .user-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 8px var(--success);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: .4; }
+  }
+
+  /* Drop zone */
+  .dropzone {
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .25s;
+    position: relative;
+    background: var(--bg);
+    margin-bottom: 20px;
+  }
+
+  .dropzone:hover,
+  .dropzone.dragover {
+    border-color: var(--accent);
+    background: rgba(0,229,255,.03);
+    box-shadow: inset 0 0 40px rgba(0,229,255,.04);
+  }
+
+  .dropzone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .dz-icon {
+    width: 48px; height: 48px;
+    background: rgba(0,229,255,.08);
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 14px;
+  }
+  .dz-icon svg { width: 26px; height: 26px; color: var(--accent); }
+
+  .dz-title {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .dz-sub { font-size: 11px; color: var(--muted); letter-spacing: .5px; }
+
+  /* File list */
+  .file-list { margin-bottom: 20px; }
+
+  .file-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 8px;
+    animation: fadeUp .3s ease;
+    transition: border-color .2s;
+  }
+
+  .file-item:hover { border-color: rgba(0,229,255,.2); }
+
+  .file-ext {
+    width: 36px; height: 36px;
+    border-radius: 7px;
+    background: rgba(124,58,237,.15);
+    border: 1px solid rgba(124,58,237,.3);
+    display: grid;
+    place-items: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #a78bfa;
+    letter-spacing: .5px;
+    text-transform: uppercase;
+    flex-shrink: 0;
+  }
+
+  .file-info { flex: 1; min-width: 0; }
+
+  .file-name {
+    font-size: 12px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 3px;
+  }
+
+  .file-meta { font-size: 10px; color: var(--muted); }
+
+  .file-remove {
+    background: none; border: none;
+    color: var(--muted); cursor: pointer;
+    padding: 4px; border-radius: 4px;
+    transition: all .2s;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .file-remove:hover { color: var(--error); background: rgba(239,68,68,.1); }
+  .file-remove svg { width: 15px; height: 15px; }
+
+  /* Progress bar */
+  .progress-wrap {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: var(--border);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 99px;
+    transition: width .3s ease;
+    box-shadow: 0 0 10px rgba(0,229,255,.5);
+  }
+
+  /* Stats row */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .stat {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    text-align: center;
+  }
+
+  .stat-val {
+    font-family: var(--display);
+    font-size: 20px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+
+  .stat-lbl { font-size: 9px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+
+  /* Security badge */
+  .security-note {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 16px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    letter-spacing: .5px;
+  }
+  .security-note svg { width: 13px; height: 13px; color: var(--success); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div class="orb2"></div>
+
+<!-- ── LOGIN SCREEN ── -->
+<div class="screen" id="loginScreen">
+  <div class="card">
+    <div class="logo">
+      <div class="logo-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">SecureVault</div>
+        <div class="logo-sub">Upload Portal v2.0</div>
+      </div>
+    </div>
+
+    <h2>Sign In</h2>
+    <p class="subtitle">// Authorized personnel only</p>
+
+    <div id="loginAlert" class="alert alert-error hidden">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><circle cx="12" cy="16" r=".5" fill="currentColor"/>
+      </svg>
+      <span id="loginAlertMsg">Invalid credentials.</span>
+    </div>
+
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="username" placeholder="Enter username" autocomplete="username" />
+    </div>
+
+    <div class="field">
+      <label>Password</label>
+      <div class="pass-wrap">
+        <input type="password" id="password" placeholder="Enter password" autocomplete="current-password" />
+        <button class="toggle-pass" id="togglePass" title="Show/Hide password">
+          <svg id="eyeIcon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            <path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="loginBtn">Authenticate →</button>
+
+    <div class="security-note">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+      </svg>
+      Session encrypted · Auto-logout after 30 min
+    </div>
+  </div>
+</div>
+
+<!-- ── UPLOAD PORTAL SCREEN ── -->
+<div class="screen hidden" id="portalScreen" style="max-width:520px;">
+  <div class="card">
+    <div class="portal-header">
+      <div class="logo" style="margin-bottom:0;">
+        <div class="logo-icon">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round"
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+        </div>
+        <div>
+          <div class="logo-text">SecureVault</div>
+          <div class="logo-sub">Upload Portal</div>
+        </div>
+      </div>
+      <div>
+        <div class="user-badge">
+          <div class="user-dot"></div>
+          <span id="activeUser">admin</span>
+        </div>
+        <button class="btn btn-ghost" style="width:auto;padding:6px 14px;font-size:10px;margin-top:8px;" id="logoutBtn">
+          Logout
+        </button>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-val" id="statCount">0</div>
+        <div class="stat-lbl">Files</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statSize">0 B</div>
+        <div class="stat-lbl">Total Size</div>
+      </div>
+      <div class="stat">
+        <div class="stat-val" id="statDone">0</div>
+        <div class="stat-lbl">Uploaded</div>
+      </div>
+    </div>
+
+    <!-- Upload alerts -->
+    <div id="uploadAlert" class="hidden"></div>
+
+    <!-- Drop zone -->
+    <div class="dropzone" id="dropzone">
+      <input type="file" id="fileInput" multiple />
+      <div class="dz-icon">
+        <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round"
+            d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5"/>
+        </svg>
+      </div>
+      <div class="dz-title">Drop files here</div>
+      <div class="dz-sub">or click to browse · Any file type accepted</div>
+    </div>
+
+    <!-- File list -->
+    <div class="file-list" id="fileList"></div>
+
+    <!-- Progress -->
+    <div class="progress-wrap hidden" id="progressWrap">
+      <div class="progress-label">
+        <span id="progressLabel">Uploading…</span>
+        <span id="progressPct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="uploadBtn" disabled>
+      Upload Files →
+    </button>
+    <button class="btn btn-ghost" id="clearBtn" style="margin-top:8px;">
+      Clear All
+    </button>
+
+    <div class="security-note">
+      <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+        <path stroke-linecap="round" stroke-linejoin="round"
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+      </svg>
+      All uploads encrypted in transit · Max 100 MB per file
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ── CREDENTIALS ── */
+  const USERS = { admin: 'admin311988' };
+
+  /* ── STATE ── */
+  let selectedFiles = [];
+  let uploadedCount = 0;
+  let sessionTimer;
+
+  /* ── ELEMENTS ── */
+  const loginScreen  = document.getElementById('loginScreen');
+  const portalScreen = document.getElementById('portalScreen');
+  const loginAlert   = document.getElementById('loginAlert');
+  const loginAlertMsg= document.getElementById('loginAlertMsg');
+  const usernameEl   = document.getElementById('username');
+  const passwordEl   = document.getElementById('password');
+  const loginBtn     = document.getElementById('loginBtn');
+  const logoutBtn    = document.getElementById('logoutBtn');
+  const togglePass   = document.getElementById('togglePass');
+  const eyeIcon      = document.getElementById('eyeIcon');
+  const activeUser   = document.getElementById('activeUser');
+  const dropzone     = document.getElementById('dropzone');
+  const fileInput    = document.getElementById('fileInput');
+  const fileList     = document.getElementById('fileList');
+  const uploadBtn    = document.getElementById('uploadBtn');
+  const clearBtn     = document.getElementById('clearBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressPct  = document.getElementById('progressPct');
+  const progressLabel= document.getElementById('progressLabel');
+  const uploadAlert  = document.getElementById('uploadAlert');
+  const statCount    = document.getElementById('statCount');
+  const statSize     = document.getElementById('statSize');
+  const statDone     = document.getElementById('statDone');
+
+  /* ── HELPERS ── */
+  function formatSize(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024, sizes = ['B','KB','MB','GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  }
+
+  function getExt(name) {
+    const parts = name.split('.');
+    return parts.length > 1 ? parts.pop().substring(0,4) : 'FILE';
+  }
+
+  function showAlert(container, type, msg) {
+    const icons = {
+      error:   '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>',
+      success: '<path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>',
+      warn:    '<path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>',
+    };
+    container.className = `alert alert-${type}`;
+    container.innerHTML = `<svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">${icons[type]}</svg><span>${msg}</span>`;
+    container.classList.remove('hidden');
+  }
+
+  function updateStats() {
+    const totalBytes = selectedFiles.reduce((s, f) => s + f.size, 0);
+    statCount.textContent = selectedFiles.length;
+    statSize.textContent  = formatSize(totalBytes);
+    statDone.textContent  = uploadedCount;
+    uploadBtn.disabled    = selectedFiles.length === 0;
+  }
+
+  /* ── TOGGLE PASSWORD ── */
+  togglePass.addEventListener('click', () => {
+    const isPass = passwordEl.type === 'password';
+    passwordEl.type = isPass ? 'text' : 'password';
+    eyeIcon.innerHTML = isPass
+      ? '<path stroke-linecap="round" stroke-linejoin="round" d="M3.98 8.223A10.477 10.477 0 001.934 12C3.226 16.338 7.244 19.5 12 19.5c.993 0 1.953-.138 2.863-.395M6.228 6.228A10.45 10.45 0 0112 4.5c4.756 0 8.773 3.162 10.065 7.498a10.523 10.523 0 01-4.293 5.774M6.228 6.228L3 3m3.228 3.228l3.65 3.65m7.894 7.894L21 21m-3.228-3.228l-3.65-3.65m0 0a3 3 0 10-4.243-4.243m4.242 4.242L9.88 9.88"/>'
+      : '<path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/><path d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>';
+  });
+
+  /* ── LOGIN ── */
+  function attemptLogin() {
+    const u = usernameEl.value.trim();
+    const p = passwordEl.value;
+    if (!u || !p) {
+      showAlert(loginAlert, 'warn', 'Please enter both username and password.');
+      return;
+    }
+    if (USERS[u] && USERS[u] === p) {
+      loginAlert.classList.add('hidden');
+      activeUser.textContent = u;
+      loginScreen.classList.add('hidden');
+      portalScreen.classList.remove('hidden');
+      portalScreen.style.animation = 'none';
+      void portalScreen.offsetWidth;
+      portalScreen.style.animation = '';
+      startSessionTimer();
+    } else {
+      loginAlert.classList.remove('hidden');
+      showAlert(loginAlert, 'error', 'Invalid username or password. Try again.');
+      passwordEl.value = '';
+      passwordEl.focus();
+    }
+  }
+
+  loginBtn.addEventListener('click', attemptLogin);
+  [usernameEl, passwordEl].forEach(el =>
+    el.addEventListener('keydown', e => e.key === 'Enter' && attemptLogin())
+  );
+
+  /* ── LOGOUT ── */
+  function logout() {
+    clearTimeout(sessionTimer);
+    selectedFiles = [];
+    uploadedCount = 0;
+    fileList.innerHTML = '';
+    updateStats();
+    uploadAlert.classList.add('hidden');
+    progressWrap.classList.add('hidden');
+    usernameEl.value = '';
+    passwordEl.value = '';
+    portalScreen.classList.add('hidden');
+    loginScreen.classList.remove('hidden');
+  }
+
+  logoutBtn.addEventListener('click', logout);
+
+  /* ── SESSION TIMER (30 min) ── */
+  function startSessionTimer() {
+    clearTimeout(sessionTimer);
+    sessionTimer = setTimeout(() => {
+      logout();
+      setTimeout(() => showAlert(loginAlert, 'warn', 'Session expired. Please sign in again.'), 100);
+    }, 30 * 60 * 1000);
+  }
+
+  /* ── DRAG & DROP ── */
+  dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('dragover'); });
+  dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+  dropzone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropzone.classList.remove('dragover');
+    addFiles([...e.dataTransfer.files]);
+  });
+
+  fileInput.addEventListener('change', () => {
+    addFiles([...fileInput.files]);
+    fileInput.value = '';
+  });
+
+  /* ── FILE MANAGEMENT ── */
+  const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
+
+  function addFiles(files) {
+    uploadAlert.classList.add('hidden');
+    let rejected = 0;
+    files.forEach(f => {
+      if (f.size > MAX_SIZE) { rejected++; return; }
+      if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) {
+        selectedFiles.push(f);
+      }
+    });
+    if (rejected) showAlert(uploadAlert, 'warn', `${rejected} file(s) exceeded the 100 MB limit and were skipped.`);
+    renderFileList();
+    updateStats();
+  }
+
+  function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    renderFileList();
+    updateStats();
+  }
+
+  function renderFileList() {
+    fileList.innerHTML = '';
+    selectedFiles.forEach((f, i) => {
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `
+        <div class="file-ext">${getExt(f.name)}</div>
+        <div class="file-info">
+          <div class="file-name">${f.name}</div>
+          <div class="file-meta">${formatSize(f.size)}</div>
+        </div>
+        <button class="file-remove" title="Remove">
+          <svg fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+          </svg>
+        </button>`;
+      item.querySelector('.file-remove').addEventListener('click', () => removeFile(i));
+      fileList.appendChild(item);
+    });
+  }
+
+  /* ── CLEAR ── */
+  clearBtn.addEventListener('click', () => {
+    selectedFiles = [];
+    uploadAlert.classList.add('hidden');
+    progressWrap.classList.add('hidden');
+    renderFileList();
+    updateStats();
+  });
+
+  /* ── SIMULATED UPLOAD ── */
+  uploadBtn.addEventListener('click', () => {
+    if (selectedFiles.length === 0) return;
+    uploadBtn.disabled = true;
+    clearBtn.disabled  = true;
+    progressWrap.classList.remove('hidden');
+    uploadAlert.classList.add('hidden');
+
+    let progress = 0;
+    progressFill.style.width = '0%';
+    progressPct.textContent = '0%';
+    progressLabel.textContent = `Uploading ${selectedFiles.length} file(s)…`;
+
+    const interval = setInterval(() => {
+      progress += Math.random() * 8 + 2;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        progressFill.style.width = '100%';
+        progressPct.textContent = '100%';
+        progressLabel.textContent = 'Upload complete!';
+        uploadedCount += selectedFiles.length;
+        showAlert(uploadAlert, 'success', `✓ ${selectedFiles.length} file(s) uploaded successfully.`);
+        selectedFiles = [];
+        renderFileList();
+        updateStats();
+        uploadBtn.disabled = false;
+        clearBtn.disabled  = false;
+        setTimeout(() => progressWrap.classList.add('hidden'), 3000);
+      } else {
+        progressFill.style.width = progress + '%';
+        progressPct.textContent  = Math.floor(progress) + '%';
+      }
+    }, 120);
+  });
+
+  /* ── INIT ── */
+  updateStats();
+  usernameEl.focus();
+</script>
+</body>
+</html>
