@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Secure Upload Portal</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Syne:wght@700;800&display=swap" rel="stylesheet" />
+<script src="https://ucarecdn.com/libs/widget/3.x/uploadcare.full.min.js" charset="utf-8"></script>
 <style>
   :root {
     --bg: #0a0c10;
@@ -810,40 +811,84 @@
     updateStats();
   });
 
-  /* ── SIMULATED UPLOAD ── */
-  uploadBtn.addEventListener('click', () => {
+  /* ── UPLOADCARE CONFIG ── */
+  const UC_PUBLIC_KEY = '08649cb5d77811da419f';
+
+  /* ── REAL UPLOAD via Uploadcare REST API ── */
+  uploadBtn.addEventListener('click', async () => {
     if (selectedFiles.length === 0) return;
     uploadBtn.disabled = true;
     clearBtn.disabled  = true;
     progressWrap.classList.remove('hidden');
     uploadAlert.classList.add('hidden');
 
-    let progress = 0;
+    const total = selectedFiles.length;
+    let done = 0;
+    let failed = 0;
+
     progressFill.style.width = '0%';
     progressPct.textContent = '0%';
-    progressLabel.textContent = `Uploading ${selectedFiles.length} file(s)…`;
+    progressLabel.textContent = `Uploading 0 / ${total} file(s)\u2026`;
 
-    const interval = setInterval(() => {
-      progress += Math.random() * 8 + 2;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-        progressFill.style.width = '100%';
-        progressPct.textContent = '100%';
-        progressLabel.textContent = 'Upload complete!';
-        uploadedCount += selectedFiles.length;
-        showAlert(uploadAlert, 'success', `✓ ${selectedFiles.length} file(s) uploaded successfully.`);
-        selectedFiles = [];
-        renderFileList();
-        updateStats();
-        uploadBtn.disabled = false;
-        clearBtn.disabled  = false;
-        setTimeout(() => progressWrap.classList.add('hidden'), 3000);
-      } else {
-        progressFill.style.width = progress + '%';
-        progressPct.textContent  = Math.floor(progress) + '%';
+    for (const file of selectedFiles) {
+      try {
+        const formData = new FormData();
+        formData.append('UPLOADCARE_PUB_KEY', UC_PUBLIC_KEY);
+        formData.append('UPLOADCARE_STORE', 'auto');
+        formData.append('file', file);
+
+        await new Promise((resolve) => {
+          const xhr = new XMLHttpRequest();
+          xhr.open('POST', 'https://upload.uploadcare.com/base/');
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const overall = ((done + e.loaded / e.total) / total) * 100;
+              progressFill.style.width = overall + '%';
+              progressPct.textContent = Math.floor(overall) + '%';
+            }
+          };
+
+          xhr.onload = () => {
+            if (xhr.status === 200) {
+              done++;
+            } else {
+              failed++;
+            }
+            const overall = ((done + failed) / total) * 100;
+            progressFill.style.width = overall + '%';
+            progressPct.textContent = Math.floor(overall) + '%';
+            progressLabel.textContent = `Uploading ${done + failed} / ${total} file(s)\u2026`;
+            resolve();
+          };
+
+          xhr.onerror = () => { failed++; resolve(); };
+          xhr.send(formData);
+        });
+      } catch (e) {
+        failed++;
       }
-    }, 120);
+    }
+
+    progressFill.style.width = '100%';
+    progressPct.textContent = '100%';
+    progressLabel.textContent = 'Upload complete!';
+    uploadedCount += done;
+
+    if (failed === 0) {
+      showAlert(uploadAlert, 'success', `\u2713 ${done} file(s) uploaded successfully to Uploadcare.`);
+    } else if (done > 0) {
+      showAlert(uploadAlert, 'warn', `${done} file(s) uploaded. ${failed} failed \u2014 check your connection.`);
+    } else {
+      showAlert(uploadAlert, 'error', 'Upload failed. Please check your connection and try again.');
+    }
+
+    selectedFiles = [];
+    renderFileList();
+    updateStats();
+    uploadBtn.disabled = false;
+    clearBtn.disabled  = false;
+    setTimeout(() => progressWrap.classList.add('hidden'), 3000);
   });
 
   /* ── INIT ── */
